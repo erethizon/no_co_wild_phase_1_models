@@ -2,18 +2,110 @@
 title: "R Notebook"
 output: html_notebook
 ---
+Code for stepwise regression in R
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
-
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
-
+Prep the workspace
 ```{r}
-plot(cars)
+rm(list = ls())
+library(MASS)
+library(caret)
+library(dplyr)
+```
+Load the draft data
+```{r}
+KA<-read.csv("/Users/ebar/Dropbox/1Courses/ResearchGroup/2019-2020/Kate Andy/Covariates.draft.csv")
+
+LS<-read.csv("/Users/ebar/Dropbox/1Courses/ResearchGroup/2019-2020/Leslie/SYEvariables.csv")
+```
+Deal with NA's.
+
+Stepwise regression won't work well if you have different amounts of data for the different regression runs.  Thus, we need a data set with the same data for each regression model. In Kate's data, there are some cameras for which there were no species detected.  We will delete them from the data set.
+```{r}
+dump<-which(is.na(KA$SpecRichness))
+KA<-KA[-dump,]
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+Isolate response and predictor variables
+```{r}
+Kresponse<-KA[, 7:10]
+Kpreds<- KA[, c(4, 6, 11:47)]
+Kpreds<- dplyr::select(Kpreds, -starts_with("P_Barren"))
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+```
+Now if there are any predictors remaining for which there are NA's, we should remove them from the predictor list. Use dplyr to find them.
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+```{r}
+haveNAs<-Kpreds %>% select_if(function(x) any(is.na(x))) %>% names()
+#returns column names that contain NAs
+```
+Now remove those columns from Kpreds
+```{r}
+Kpreds<-dplyr::select(Kpreds, - all_of(haveNAs))
+```
 
+Now let's run a stepwise regression
+
+Set seed for reproducibility
+```{r}
+set.seed(123)
+```
+Using MASS
+
+```{r}
+full.model<-lm(Kresponse$SpecRichness ~ ., data = Kpreds)
+step.model<-stepAIC(full.model, direction = "both", trace = FALSE)
+summary(step.model)
+
+```
+Using a second approach to get different outputs using the train() function from caret package.
+
+Another approach following [this website](https://www.statology.org/stepwise-regression-r/)
+
+Start by defining the intercept-only model
+```{r}
+m.intercept_only<-lm(Kresponse$SpecRichness ~ 1, data = Kpreds)
+```
+Define the total model
+```{r}
+m.total<-lm(Kresponse$SpecRichness ~ ., data = Kpreds)
+```
+Perform stepwise regression
+```{r}
+m.stepwise<-step(m.intercept_only, direction = "both", scope = formula(m.total))
+```
+Now run the final model
+```{r}
+m.final<-lm(Kresponse$SpecRichness ~ Season + P_Wetland50 + Cam_Orient + Elevation50, data = Kpreds)
+summary(m.final)
+```
+All subsets regression.  See [this webpage](https://educationalresearchtechniques.com/2017/02/24/subset-regression-in-r/)
+
+```{r}
+library(leaps)
+m.all_subsets<-regsubsets(Kresponse$SpecRichness ~ ., data = Kpreds)
+all_summary<-summary(m.all_subsets)
+plot(m.all_subsets, scale = "r2")
+```
+Plot some results for model comparison
+```{r}
+#base plotting
+par(mfrow = c(1,2))
+plot(all_summary$cp)
+plot(m.all_subsets,scale = "Cp")
+```
+
+Image on left suggests that a model with 4 predictors is best, but doesn't tell which four. Image on the right 
+
+```{r}
+plot(m.all_subsets, scale = "Cp")
+```
+Shows that spring, winter, P_herb50 and PPT_100 are best in model.
+
+And now use bayesian information criterion BIC
+```{r}
+plot(all_summary$bic)
+```
+```{r}
+plot(m.all_subsets, scale = "bic")
+```
+BIC indicates a 2 or 3 feature model is best, and chooses season spring, season winter, and P_herb50 as best.

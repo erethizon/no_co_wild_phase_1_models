@@ -1,0 +1,143 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+Code for stepwise regression in R
+
+Prep the workspace
+```{r}
+rm(list = ls())
+library(MASS)
+library(caret)
+library(tidyverse)
+```
+Load the draft data
+```{r}
+KA<-read.csv("Data/KAmodel.csv")
+```
+### Modeling mammal diversity in forests
+To do this, we need to generate a data set from the cameras that gives mean variables per forest.  We'll end up with 6 rows of data, one for each forest.
+
+```{r}
+DF<-KA %>% group_by(Forest, Round, ForestType, Cam_Model) %>% dplyr::summarize(
+  mMSR = mean(SpecRichness, na.rm = T), #Mammal mean species richness
+  mNumDeer = mean(NumDeer, na.rm = T), #mean number of deer detected
+  mMSimp = mean(Inv_simp_div, na.rm = T), #mean mammal inverse simpson's index
+  mMShan = mean (Shan_div, na.rm = T), #mean Mammal shannon index
+  mRD50 = mean(RoadDensity50, na.rm = T), #mean 50 ha road density
+  mPS = mean(PlotSize50, na.rm = T), #mean forest size
+  mAspect50 = mean(Aspect50, na.rm = T), #mean aspect over 50 ha
+  mSlope50 = mean(Slope50, na.rm = T), #mean slope over 50 ha
+  mWater50 = mean (P_Water50, na.rm = T), #mean percent water in 50ha
+  mMixed50 = mean(P_Mixed50, na.rm = T), #mean percent mixed forest in 50 ha
+  mDecid50 = mean(P_Deciduous50,na.rm = T), #mean per decid forest 50ha
+  mForest50 = mean(P_Forest50, na.rm = T), #mean per forest in 50 ha
+  mDeveloped50 = mean(P_Development50, na.rm = T), #mean per developed in 50 ha
+  mAg50 = mean(P_Agriculture50, na.rm = T), #mean per ag in 50 ha
+  mShrub50 = mean(P_Shrub50, na.rm = T), #mean per shrubland in 50 ha
+  mWet50 = mean(P_Wetland50, na.rm = T), #mean per wetland in 50ha
+  mHerb50 = mean(P_Herb50, na.rm = T), #mean percent herbaceous in 50ha
+  mPrecip50 = mean(PPT_50, na.rm = T), #mean precip prism 50 ha
+  mElev50 = mean (Elevation50, na.rm = T), #mean elevation over 50ha
+  mFShannon = mean(ForestShannon, na.rm = T), #mean forest shannon index
+  mFSimpson = mean(ForestSimpson, na.rm = T), #mean forest simpson index
+  mFSR = mean(ForestSR, na.rm = T), #mean forest species richness
+  mFDens = mean(Forest_Density, na.rm = T), #mean density of trees/seedlings/saplings in forest
+  mFDom = mean(Forest_Dominance, na.rm = T), #mean dominance of trees/seedlings/saplings in forest
+  mSapDom = mean(Sap_Dominance, na.rm = T), #mean dom of saplings/seedlings in forest
+  mPrecip100 = mean(PPT_100, na.rm = T), #mean precip over 100ha
+  mSlope100 = mean(Slope100, na.rm = T), #mean slope over 100ha
+  mElev100 = mean(Elevation100, na.rm =T), #mean elevation over 100ha
+  mRD100 = mean(RoadDensity100, na.rm = T), #mean road density 100ha
+  mAspect100 = mean(Aspect100, na.rm = T), #mean aspect over 100 ha
+  mWater100 = mean(P_Water100, na.rm = T), #mean per water over 100ha
+  mMixed100 = mean(P_Mixed100, na.rm = T), #mean per mixed forest over 100 ha
+  mDecid100 = mean(P_Deciduos100, na.rm = T), #mean per decid forest over 100 ha
+  mForest100 = mean(P_Forest100, na.rm = T), #mean percent forest 100 ha
+  mDeveloped100 = mean(P_Development100, na.rm = T), #mean per developed over 100 ha
+  mAg100 = mean(P_Agriculture100, na.rm = T), #mean ag per 100 ha
+  mShrub100 = mean(P_Shrub100, na.rm = T), #mean percent shrubland over 100 ha
+  mHerb100 = mean(P_Heb100, na.rm = T), #mean percent herbaceous over 100 ha
+  
+)
+```
+Deal with NA's.
+```{r}
+DF<-DF[complete.cases(DF),]
+```
+
+Isolate response and predictor variables
+```{r}
+Kresponse<-DF[, 5:8]
+Kpreds<- DF[, c(1:4, 9:42)]
+```
+Now if there are any predictors remaining for which there are NA's, we should remove them from the predictor list. Use dplyr to find them.
+###Run Regressions
+#### Across all seasons 
+Modeling set 1: Do not include round/season among predictors
+Now let's run a stepwise regression
+
+Set seed for reproducibility
+```{r}
+set.seed(123)
+```
+Using MASS
+
+```{r}
+full.model<-lm(Kresponse$mMSR ~ ., data = Kpreds[,c(1,3:38)])
+step.model<-stepAIC(full.model, direction = "both", trace = FALSE)
+summary(step.model)
+
+```
+Using a second approach to get different outputs using the train() function from caret package.
+
+Another approach following [this website](https://www.statology.org/stepwise-regression-r/)
+
+Start by defining the intercept-only model
+```{r}
+m.intercept_only<-lm(Kresponse$mMSR ~ 1, data = Kpreds[,c(1,3:38)])
+```
+Define the total model
+```{r}
+m.total<-lm(Kresponse$mMSR ~ ., data = Kpreds[,c(1,3:38)])
+```
+Perform stepwise regression
+```{r}
+m.stepwise<-step(m.intercept_only, direction = "both", scope = formula(m.total))
+```
+Now run the final model
+```{r}
+m.final<-lm(Kresponse$mMSR ~ mRD50 + mDeveloped100, data = Kpreds[,c(1,3:38)])
+summary(m.final)
+```
+All subsets regression.  See [this webpage](https://educationalresearchtechniques.com/2017/02/24/subset-regression-in-r/)
+
+```{r}
+library(leaps)
+m.all_subsets<-regsubsets(Kresponse$mMSR ~ ., data = Kpreds[,c(1,3:38)])
+all_summary<-summary(m.all_subsets)
+plot(m.all_subsets, scale = "r2")
+```
+Plot some results for model comparison
+```{r}
+#base plotting
+par(mfrow = c(1,2))
+plot(all_summary$cp)
+plot(m.all_subsets,scale = "Cp")
+```
+
+Image on left suggests that a model with 4 predictors is best, but doesn't tell which four. Image on the right 
+
+```{r}
+plot(m.all_subsets, scale = "Cp")
+```
+
+
+And now use bayesian information criterion BIC
+```{r}
+plot(all_summary$bic)
+```
+```{r}
+plot(m.all_subsets, scale = "bic")
+```
+

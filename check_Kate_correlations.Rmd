@@ -1,0 +1,96 @@
+---
+title: "check_correlations.Rmd"
+author: "Erika"
+date: "4/27/2020"
+output: html_document
+---
+
+Looking at methods for multiple regression modeling for Kate's camera trap data.
+
+set up the workspace
+```{r}
+rm(list = ls())
+library(dplyr)
+library(ggplot2)
+library(Hmisc)
+library(corrplot)
+library(ggcorrplot)
+
+```
+Load the draft data
+```{r}
+KA<-read.csv("/Users/ebar/Dropbox/1Courses/ResearchGroup/2019-2020/Kate Andy/Covariates_draft2.csv")
+
+LS<-read.csv("/Users/ebar/Dropbox/1Courses/ResearchGroup/2019-2020/Leslie/SYEvariables.csv")
+```
+
+### Kate's data
+Columns 1 - 3 identify the different cameras and are not predictor variables. 
+
+Let's make a DF of the possible **numeric predictor** variables to look for correlations
+
+```{r}
+K_cont_vars<-names(KA)
+remove<-c("Camera", "SD_Card", "Round","ForestType", "Forest","Season", "Cam_Model")
+K_cont_vars<-K_cont_vars[!K_cont_vars %in% remove]
+
+KCPreds<-KA %>% select(all_of(K_cont_vars))
+```
+Now I need a correlation matrix of the variables
+
+```{r}
+cor_tests<-cor(KCPreds, method = "pearson", use = "complete.obs")
+cor_tests<-round(cor_tests, 2)
+```
+Now to get p-values, need hmisc package
+```{r}
+Kresult<-rcorr(as.matrix(KCPreds)) #rcorr is a hmisc function
+
+```
+Now flatten to get easier to understand results
+```{r}
+flattenCorrMatrix<-function(cormat,pmat){
+  ut<-upper.tri(cormat)
+  data.frame(
+    row = rownames (cormat)[row(cormat) [ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor = (cormat)[ut],
+    p = pmat[ut]
+  )
+}
+```
+Now use
+```{r}
+Kres_tab<-flattenCorrMatrix(Kresult$r, Kresult$P)
+Khigh_cor<-filter(Kres_tab, cor >= 0.7 | cor <= -0.7 )
+```
+According to Khigh_cor, diversity indices are correlated, but we don't care since we won't be using them as predictors.  P_Evergreen50 is highly correlated with P_Deciduous50 and P_Evergreen100 with P_Deciduous100 so we'll just keep one of those for each (how about P_Deciduous).  P_Forest100 is highly correlated with P_Wetland100 so dump P_Wetland100.  Finally, Keep Forest_Density and Forest_Dominance as the tree and sapling densities and tree dominance are highly corrleated.  So keep sapling dominance, but not tree dominance, and get rid of both tree and sapling density.
+
+List of variables to remove from predictors
+```{r}
+correlated<-c("P_Evergreen50", "P_Evergreen100", "P_Wetland100","Tree_Density", "Sap_Density", "Tree_Dominance")
+```
+Now write a new KA that omits these variables for use in modeling.
+
+```{r}
+KAmodel<-select(KA, -correlated)
+write.csv(KAmodel, "Data/KAmodel.csv")
+```
+
+
+#### Now Visualize
+
+Draw a correlogram with corrplot package
+
+```{r}
+corrplot(cor_tests, type = "lower", order = "hclust", tl.col = "black", tl.srt = 45)
+```
+Use ggcorrplot
+http://www.sthda.com/english/wiki/ggcorrplot-visualization-of-a-correlation-matrix-using-ggplot2
+
+```{r}
+ggcorrplot(Kresult$r, hc.order = TRUE, type = "lower", lab = TRUE, outline.col = "white", p.mat = Kresult$P, insig = "blank" )
+```
+
+
+
