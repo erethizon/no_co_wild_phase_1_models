@@ -19,7 +19,7 @@ KA<-read.csv("Data/KAmodel.csv")
 To do this, we need to generate a data set from the cameras that gives mean variables per forest.  We'll end up with 6 rows of data, one for each forest.
 
 ```{r}
-DF<-KA %>% group_by(Forest, Round, ForestType, Cam_Model) %>% dplyr::summarize(
+DF<-KA %>% group_by(Round, ForestType, Cam_Model) %>% dplyr::summarize(
   mMSR = mean(SpecRichness, na.rm = T), #Mammal mean species richness
   mNumDeer = mean(NumDeer, na.rm = T), #mean number of deer detected
   mMSimp = mean(Inv_simp_div, na.rm = T), #mean mammal inverse simpson's index
@@ -40,8 +40,8 @@ DF<-KA %>% group_by(Forest, Round, ForestType, Cam_Model) %>% dplyr::summarize(
   mPrecip50 = mean(PPT_50, na.rm = T), #mean precip prism 50 ha
   mElev50 = mean (Elevation50, na.rm = T), #mean elevation over 50ha
   mFShannon = mean(ForestShannon, na.rm = T), #mean forest shannon index
-  mFSimpson = mean(ForestSimpson, na.rm = T), #mean forest simpson index
-  mFSR = mean(ForestSR, na.rm = T), #mean forest species richness
+  #mFSimpson = mean(ForestSimpson, na.rm = T), #mean forest simpson index
+  #mFSR = mean(ForestSR, na.rm = T), #mean forest species richness
   mFDens = mean(Forest_Density, na.rm = T), #mean density of trees/seedlings/saplings in forest
   mFDom = mean(Forest_Dominance, na.rm = T), #mean dominance of trees/seedlings/saplings in forest
   mSapDom = mean(Sap_Dominance, na.rm = T), #mean dom of saplings/seedlings in forest
@@ -69,9 +69,9 @@ DF<-DF[complete.cases(DF),]
 Isolate response and predictor variables
 ```{r}
 Kresponse<-DF[, 5:8]
-Kpreds<- DF[, c(1:4, 9:42)]
+Kpreds<- DF[, c(1:4, 9:40)]
 ```
-Now if there are any predictors remaining for which there are NA's, we should remove them from the predictor list. Use dplyr to find them.
+
 ###Run Regressions
 #### Across all seasons 
 Modeling set 1: Do not include round/season among predictors
@@ -84,7 +84,7 @@ set.seed(123)
 Using MASS
 
 ```{r}
-full.model<-lm(Kresponse$mMSR ~ ., data = Kpreds[,c(1,3:38)])
+full.model<-glm(Kresponse$mMSR ~ ., data = Kpreds[,c(1,3:36)])
 step.model<-stepAIC(full.model, direction = "both", trace = FALSE)
 summary(step.model)
 
@@ -95,11 +95,11 @@ Another approach following [this website](https://www.statology.org/stepwise-reg
 
 Start by defining the intercept-only model
 ```{r}
-m.intercept_only<-lm(Kresponse$mMSR ~ 1, data = Kpreds[,c(1,3:38)])
+m.intercept_only<-glm(Kresponse$mMSR ~ 1, data = Kpreds[,c(1,3:36)])
 ```
 Define the total model
 ```{r}
-m.total<-lm(Kresponse$mMSR ~ ., data = Kpreds[,c(1,3:38)])
+m.total<-glm(Kresponse$mMSR ~ ., data = Kpreds[,c(1,3:36)])
 ```
 Perform stepwise regression
 ```{r}
@@ -107,14 +107,14 @@ m.stepwise<-step(m.intercept_only, direction = "both", scope = formula(m.total))
 ```
 Now run the final model
 ```{r}
-m.final<-lm(Kresponse$mMSR ~ mRD50 + mDeveloped100, data = Kpreds[,c(1,3:38)])
+m.final<-glm(Kresponse$mMSR ~ mRD50 + mDeveloped100, data = Kpreds[,c(1,3:36)])
 summary(m.final)
 ```
 All subsets regression.  See [this webpage](https://educationalresearchtechniques.com/2017/02/24/subset-regression-in-r/)
 
 ```{r}
 library(leaps)
-m.all_subsets<-regsubsets(Kresponse$mMSR ~ ., data = Kpreds[,c(1,3:38)])
+m.all_subsets<-regsubsets(Kresponse$mMSR ~ ., data = Kpreds[,c(1,3:36)])
 all_summary<-summary(m.all_subsets)
 plot(m.all_subsets, scale = "r2")
 ```

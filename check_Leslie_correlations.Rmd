@@ -1,0 +1,110 @@
+---
+title: "check_correlations.Rmd"
+author: "Erika"
+date: "4/27/2020"
+output: html_document
+---
+
+Looking at methods for multiple regression modeling for Kate's camera trap data.
+
+set up the workspace
+```{r}
+rm(list = ls())
+library(dplyr)
+library(ggplot2)
+library(Hmisc)
+library(corrplot)
+library(ggcorrplot)
+
+```
+Load the draft data
+```{r}
+LS<-read.csv("/Users/ebar/Dropbox/1Courses/ResearchGroup/2019-2020/Leslie/SYEvariables.csv")
+```
+
+### Leslie's data
+Columns 1 - 2 identify the different forests and plots and are not quantitative variables. 
+
+Let's make a DF of the possible **numeric predictor** variables to look for correlations
+
+```{r}
+Lvars<-LS[, 3:27]
+Lvars<-dplyr::select(Lvars, - Forest_type)
+```
+Now remove response variables from Lvars
+```{r}
+LPreds<-Lvars[,5:24]
+```
+Two variables, Lakes_500 and Residential_1km are 0, so remove those
+```{r}
+LPreds<-select(LPreds, -c(Lakes_500, Residential_1km))
+```
+
+Now I need a correlation matrix of the variables
+
+```{r}
+cor_tests<-cor(LPreds, method = "pearson", use = "complete.obs")
+cor_tests<-round(cor_tests, 2)
+```
+Now to get p-values, need hmisc package
+```{r}
+Lresult<-rcorr(as.matrix(LPreds)) #rcorr is a hmisc function
+
+```
+Now flatten to get easier to understand results
+```{r}
+flattenCorrMatrix<-function(cormat,pmat){
+  ut<-upper.tri(cormat)
+  data.frame(
+    row = rownames (cormat)[row(cormat) [ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor = (cormat)[ut],
+    p = pmat[ut]
+  )
+}
+```
+Now use
+```{r}
+Lres_tab<-flattenCorrMatrix(Lresult$r, Lresult$P)
+Lhigh_cor<-filter(Lres_tab, cor >= 0.7 | cor <= -0.7 )
+```
+#### Now Visualize
+
+Draw a correlogram with corrplot package
+
+```{r}
+corrplot(cor_tests, type = "lower", order = "hclust", tl.col = "black", tl.srt = 45)
+```
+Use ggcorrplot
+http://www.sthda.com/english/wiki/ggcorrplot-visualization-of-a-correlation-matrix-using-ggplot2
+
+```{r}
+ggcorrplot(Lresult$r, hc.order = TRUE, type = "lower", lab = TRUE, outline.col = "white", p.mat = Lresult$P, insig = "blank" )
+```
+Remove the following variables and then write file for regression.
+* Deciduous_1km
+* Mixed 1km
+* Evergreen 1 km
+* Cropland 1km
+* wetland 1 km
+* cropland 500 m
+* wetland 500 m
+
+```{r}
+remove<-c("Cropland_500", "Wetland_500", "Deciduous_1km", "MixedForest_1km", "Evergreen_1km", "Cropland_1km", "Wetland_1km")
+LS<-dplyr::select(LS, -remove)
+```
+Now write file
+
+```{r}
+write.csv(LS, "Data/LSmodel.csv")
+```
+
+
+Use ggcorrplot
+http://www.sthda.com/english/wiki/ggcorrplot-visualization-of-a-correlation-matrix-using-ggplot2
+
+```{r}
+ggcorrplot(Lresult$r, hc.order = TRUE, type = "lower", lab = TRUE, outline.col = "white", p.mat = Lresult$P, insig = "blank" )
+```
+

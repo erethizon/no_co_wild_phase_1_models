@@ -1,0 +1,98 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+Code for stepwise regression in R
+
+Prep the workspace
+```{r}
+rm(list = ls())
+library(MASS)
+library(caret)
+library(tidyverse)
+```
+Load the draft data
+```{r}
+LS<-read.csv("Data/LSmodel.csv")
+```
+### Modeling forest diversity
+We need to get rid of some variables
+```{r}
+dump<-c("Plot", "Lakes_500", "Residential_1km")
+LS<-dplyr::select(LS,-dump)
+```
+
+Isolate response and predictor variables
+```{r}
+Lresponse<-LS[, 3:6 ]
+Lpreds<- LS[, 7:18]
+```
+
+###Run Regressions#### Across all seasons 
+
+Now let's run a stepwise regression
+
+Set seed for reproducibility
+```{r}
+set.seed(123)
+```
+Using MASS
+
+```{r}
+full.model<-glm(Lresponse$SpecRichness ~ ., data = Lpreds)
+step.model<-stepAIC(full.model, direction = "both", trace = FALSE)
+summary(step.model)
+
+```
+Using a second approach to get different outputs using the train() function from caret package.
+
+Another approach following [this website](https://www.statology.org/stepwise-regression-r/)
+
+Start by defining the intercept-only model
+```{r}
+m.intercept_only<-glm(Lresponse$SpecRichness ~ 1, data = Lpreds)
+```
+Define the total model
+```{r}
+m.total<-glm(Lresponse$SpecRichness ~ ., data = Lpreds)
+```
+Perform stepwise regression
+```{r}
+m.stepwise<-step(m.intercept_only, direction = "both", scope = formula(m.total))
+```
+Now run the final model
+```{r}
+m.final<-glm(Lresponse$SpecRichness ~ Reservoirs_1km + Lakes_1km + Residential_500 + D_road_500 + Evergreen_500, data = Lpreds)
+summary(m.final)
+```
+All subsets regression.  See [this webpage](https://educationalresearchtechniques.com/2017/02/24/subset-regression-in-r/)
+
+```{r}
+library(leaps)
+m.all_subsets<-regsubsets(Lresponse$SpecRichness ~ ., data = Lpreds)
+all_summary<-summary(m.all_subsets)
+plot(m.all_subsets, scale = "r2")
+```
+Plot some results for model comparison
+```{r}
+#base plotting
+par(mfrow = c(1,2))
+plot(all_summary$cp)
+plot(m.all_subsets,scale = "Cp")
+```
+
+Image on left suggests that a model with 4 predictors is best, but doesn't tell which four. Image on the right 
+
+```{r}
+plot(m.all_subsets, scale = "Cp")
+```
+
+
+And now use bayesian information criterion BIC
+```{r}
+plot(all_summary$bic)
+```
+```{r}
+plot(m.all_subsets, scale = "bic")
+```
+

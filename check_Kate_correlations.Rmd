@@ -21,7 +21,6 @@ Load the draft data
 ```{r}
 KA<-read.csv("/Users/ebar/Dropbox/1Courses/ResearchGroup/2019-2020/Kate Andy/Covariates_draft2.csv")
 
-LS<-read.csv("/Users/ebar/Dropbox/1Courses/ResearchGroup/2019-2020/Leslie/SYEvariables.csv")
 ```
 
 ### Kate's data
@@ -34,7 +33,8 @@ K_cont_vars<-names(KA)
 remove<-c("Camera", "SD_Card", "Round","ForestType", "Forest","Season", "Cam_Model")
 K_cont_vars<-K_cont_vars[!K_cont_vars %in% remove]
 
-KCPreds<-KA %>% select(all_of(K_cont_vars))
+KCPreds<- KA %>% select(K_cont_vars)
+KCPreds<- KA[,K_cont_vars]
 ```
 Now I need a correlation matrix of the variables
 
@@ -68,12 +68,12 @@ According to Khigh_cor, diversity indices are correlated, but we don't care sinc
 
 List of variables to remove from predictors
 ```{r}
-correlated<-c("P_Evergreen50", "P_Evergreen100", "P_Wetland100","Tree_Density", "Sap_Density", "Tree_Dominance")
+correlated<-c("P_Evergreen50", "P_Evergreen100", "P_Wetland100","Tree_Density", "Sap_Density", "Tree_Dominance", "ForestSimpson", "ForestSR")
 ```
 Now write a new KA that omits these variables for use in modeling.
 
 ```{r}
-KAmodel<-select(KA, -correlated)
+KAmodel<-dplyr::select(KA, -correlated)
 write.csv(KAmodel, "Data/KAmodel.csv")
 ```
 

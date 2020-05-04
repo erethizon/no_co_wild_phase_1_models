@@ -1,0 +1,7 @@
+"","Forest","Plot","SpecRichness","ForestSimpsonInv","ForestSimpson","ForestShannon","Seedling_density","Sapling_density","Forest_type","D_road_500","D_road_1k","Deciduous_500","MixedForest_500","Evergreen_500","Reservoirs_500","Residential_500","Lakes_500","Reservoirs_1km","Residential_1km","Lakes_1km"
+"1","Whippoorwill",NA,8.5,3.18,0.66,1.45,115732.48,4777.07,"Pine",9.45,9.72,0.2856,0.7076,0.00261,3e-04,0,0,0.00029,0,0
+"2","South Hammond",NA,8.3,4.5,0.76,1.71,18046.71,6900.248,"Pine",4.05,5.79,0.22,0.01145,0.0389,0,0,0,0.00036,0,0
+"3","Degrasse ",NA,3,1.59,0.34,0.61,7077.134,955.414,"Pine",7.18,11.02,0.314,0.677,0.0079,0,0.00025,0,0,0,0
+"4","Whiskey Flats",NA,5.5,2.79,0.64,1.2,22834.39,10350.32,"Hardwood",9.99,9.17,0.944,0.026,0,0,0,0,0,0,0
+"5","Beaver Creek",NA,4.5,2.54,0.61,1.07,95541.4,18312.1,"Hardwood",4.56,5.63,0.945,0.0258,0,0,0,0,0,0,0
+"6","Donnerville",NA,7.3,4.12,0.76,1.63,10261.15,955.414,"Hardwood",4.55,4.26,0.278,0.721,0,0,0,0,0,0,1e-04
